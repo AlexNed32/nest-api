@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Todo } from '../../../../model/todo';
+import { TodoService } from '../../services/todo.service';
+import { Todo } from '../../model/todo';
+import { BACKEND_BASE_DOMAIN } from 'src/env';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-todo-widget',
@@ -9,50 +11,31 @@ import { Todo } from '../../../../model/todo';
 })
 export class TodoWidgetComponent implements OnInit{
   public title = '';
-  public todoList: Todo[];
-  private httpClient: HttpClient;
 
-  constructor( httpClient: HttpClient) {
-    this.httpClient = httpClient;
+  public todoList$: Observable<Todo[]>
+  public loading$: Observable<boolean>
+
+  constructor(private todoService: TodoService) {
   }
 
   ngOnInit(): void {
-    this.httpClient.get<Todo[]>('http://localhost:3000/rest/todo')
-    .subscribe(todoList => {
-      this.todoList = todoList;
-    })
+    this.todoList$ = this.todoService.entities$;
+    this.loading$ = this.todoService.loading$;
+    this.todoService.getAll();
   }
 
   onCreate(): void {
     if(this.title){
-      this.httpClient.post<Todo>(
-        'http://localhost:3000/rest/todo',
-        {
-          title: this.title
-        }
-      ).subscribe(todo => {
-          this.todoList.push(todo);
-        })
+      this.todoService.add(this.title)
         this.title = '';
     }
   }
 
-  onRemove(todoDelete: Todo){
-    this.httpClient.delete<void>(
-      'http://localhost:3000/rest/todo/' + todoDelete.id
-    ).subscribe(() => {
-        this.todoList = this.todoList.filter(todo=>todo.id !== todoDelete.id)
-      })
+  onRemove(todo: Todo){
+    this.todoService.remove(todo.id)
   }
 
-  onComplited(todoOnComplited: Todo){
-    this.httpClient.patch<Todo>(
-      'http://localhost:3000/rest/todo/' + todoOnComplited.id,
-      {
-        isCompleted: !todoOnComplited.isCompleted
-      }
-    ).subscribe((updatedTodo: Todo) => {
-      this.todoList = this.todoList.map(todo=>todo.id !== updatedTodo.id ? todo : updatedTodo)
-      })
+  onComplited(todo: Todo){
+   this.todoService.update(todo)
   }
 }
